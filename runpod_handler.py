@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 
 # Global configuration
 MODELS = {
-    "htdemucs": {"memory_required": 7000, "segment_default": 10},
-    "htdemucs_ft": {"memory_required": 8000, "segment_default": 10},
-    "htdemucs_6s": {"memory_required": 9000, "segment_default": 10},
+    "htdemucs": {"memory_required": 7000, "segment_default": 7, "max_segment": 7.8},
+    "htdemucs_ft": {"memory_required": 8000, "segment_default": 7, "max_segment": 7.8},
+    "htdemucs_6s": {"memory_required": 9000, "segment_default": 7, "max_segment": 7.8},
     "mdx": {"memory_required": 4000, "segment_default": 15},
     "mdx_extra": {"memory_required": 4000, "segment_default": 15},
     "mdx_q": {"memory_required": 3000, "segment_default": 15},
@@ -55,6 +55,10 @@ def get_optimal_segment_size(model: str, gpu_available: bool) -> int:
     """Get optimal segment size based on model and hardware"""
     if not gpu_available:
         return 30  # Larger segments for CPU
+    
+    # Special handling for Hybrid Transformer models
+    if model in ["htdemucs", "htdemucs_ft", "htdemucs_6s"]:
+        return 7  # Maximum 7.8 seconds for Transformer models
     
     model_config = MODELS.get(model, MODELS["htdemucs"])
     return model_config["segment_default"]
