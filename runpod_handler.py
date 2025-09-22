@@ -13,13 +13,13 @@ import shutil
 import uuid
 import base64
 import time
+import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 import runpod
 
-# Demucs imports
-import demucs.separate
+# System monitoring imports
 import torch
 import torchaudio
 import soundfile as sf
@@ -84,29 +84,29 @@ def run_demucs_separation(
     mp3_bitrate: int,
     float32: bool
 ) -> Dict[str, str]:
-    """Run Demucs separation using the correct command line interface"""
+    """Run Demucs separation using subprocess command line"""
     
     logger.info(f"Running Demucs separation with model: {model}")
     
     try:
-        # Build demucs command following the exact documentation syntax
-        cmd_args = []
+        # Build demucs command using subprocess
+        cmd = ["python3", "-m", "demucs"]
         
-        # Add output format options first (like in the example)
+        # Add output format options
         if float32:
-            cmd_args.append("--float32")
+            cmd.append("--float32")
         else:
-            cmd_args.extend(["--mp3", "--mp3-bitrate", str(mp3_bitrate)])
+            cmd.extend(["--mp3", "--mp3-bitrate", str(mp3_bitrate)])
         
-        # Add two-stems option if specified (before -n model)
+        # Add two-stems option if specified
         if two_stems:
-            cmd_args.extend(["--two-stems", two_stems])
+            cmd.extend(["--two-stems", two_stems])
         
-        # Add model selection (-n comes after other options)
-        cmd_args.extend(["-n", model])
+        # Add model selection
+        cmd.extend(["-n", model])
         
         # Add other options
-        cmd_args.extend([
+        cmd.extend([
             "--out", output_dir,
             "--segment", str(segment),
             "--shifts", str(shifts),
@@ -114,12 +114,26 @@ def run_demucs_separation(
         ])
         
         # Add input file at the end
-        cmd_args.append(input_path)
+        cmd.append(input_path)
         
-        logger.info(f"Running demucs with args: {cmd_args}")
+        logger.info(f"Running demucs command: {' '.join(cmd)}")
         
-        # Run demucs using the separate module
-        demucs.separate.main(cmd_args)
+        # Run demucs using subprocess
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"Demucs failed with return code {result.returncode}")
+            logger.error(f"STDOUT: {result.stdout}")
+            logger.error(f"STDERR: {result.stderr}")
+            raise Exception(f"Demucs process failed: {result.stderr}")
+        
+        logger.info(f"Demucs completed successfully")
+        logger.info(f"STDOUT: {result.stdout}")
         
         # Find output files in the separated directory
         separated_dir = os.path.join(output_dir, "separated", model)
@@ -162,6 +176,9 @@ def run_demucs_separation(
         logger.info(f"Generated stems: {list(stems.keys())}")
         return stems
         
+    except subprocess.TimeoutExpired:
+        logger.error("Demucs process timed out after 5 minutes")
+        raise Exception("Demucs process timed out")
     except Exception as e:
         logger.error(f"Demucs separation failed: {str(e)}")
         raise
