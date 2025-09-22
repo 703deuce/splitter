@@ -86,9 +86,9 @@ def run_demucs_separation(
 ) -> Dict[str, str]:
     """Run Demucs separation"""
     
-    # Build demucs command
+    # Build demucs command - correct argument order
     cmd_args = [
-        "--model", model,
+        "-n", model,  # Use -n for model name, not --model
         "--out", output_dir,
         "--segment", str(segment),
         "--shifts", str(shifts),
@@ -103,6 +103,7 @@ def run_demucs_separation(
     else:
         cmd_args.extend(["--mp3", "--mp3-bitrate", str(mp3_bitrate)])
     
+    # Add input file at the end
     cmd_args.append(input_path)
     
     logger.info(f"Running demucs with args: {cmd_args}")
