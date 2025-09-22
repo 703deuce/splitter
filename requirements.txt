@@ -16,6 +16,9 @@ soundfile>=0.10.0
 aiohttp==3.9.1
 aiofiles==23.2.1
 
+# System monitoring for memory tracking
+psutil==5.9.6
+
 # GPU optimization
 # Note: Install appropriate PyTorch version for your CUDA version
 # For CUDA 11.8: torch==2.1.0+cu118 torchaudio==2.1.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html

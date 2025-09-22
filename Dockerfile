@@ -4,6 +4,10 @@ FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
 # Set working directory
 WORKDIR /app
 
+# Set timezone to avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     ffmpeg \
