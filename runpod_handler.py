@@ -7,7 +7,6 @@ AI-powered audio stem separation using Demucs
 import os
 import sys
 import json
-import asyncio
 import logging
 import tempfile
 import shutil
@@ -60,24 +59,19 @@ def get_optimal_segment_size(model: str, gpu_available: bool) -> int:
     model_config = MODELS.get(model, MODELS["htdemucs"])
     return model_config["segment_default"]
 
-async def download_audio(url: str, temp_dir: str) -> str:
-    """Download audio file from URL"""
-    import aiohttp
-    import aiofiles
+def download_audio(url: str, temp_dir: str) -> str:
+    """Download audio file from URL (synchronous)"""
+    import urllib.request
     
     filename = f"input_{uuid.uuid4().hex}"
     filepath = os.path.join(temp_dir, filename)
     
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                async with aiofiles.open(filepath, 'wb') as f:
-                    async for chunk in response.content.iter_chunked(8192):
-                        await f.write(chunk)
-                logger.info(f"Downloaded audio to {filepath}")
-                return filepath
-            else:
-                raise Exception(f"Failed to download audio: HTTP {response.status}")
+    try:
+        urllib.request.urlretrieve(url, filepath)
+        logger.info(f"Downloaded audio to {filepath}")
+        return filepath
+    except Exception as e:
+        raise Exception(f"Failed to download audio: {str(e)}")
 
 def run_demucs_separation(
     input_path: str,
@@ -245,7 +239,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         
         try:
             # Download audio file
-            input_path = asyncio.run(download_audio(audio_url, temp_dir))
+            input_path = download_audio(audio_url, temp_dir)
             
             # Run Demucs separation
             stems = run_demucs_separation(

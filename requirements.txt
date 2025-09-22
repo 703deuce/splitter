@@ -12,10 +12,6 @@ scipy>=1.7.0
 librosa>=0.9.0
 soundfile>=0.10.0
 
-# HTTP client and async file handling
-aiohttp==3.9.1
-aiofiles==23.2.1
-
 # System monitoring for memory tracking
 psutil==5.9.6
 
