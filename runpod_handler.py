@@ -139,21 +139,23 @@ def run_demucs_separation(
         logger.info(f"Demucs completed successfully")
         logger.info(f"STDOUT: {result.stdout}")
         
-        # Find output files in the separated directory
-        separated_dir = os.path.join(output_dir, "separated", model)
-        if not os.path.exists(separated_dir):
-            raise Exception(f"Output directory not found: {separated_dir}")
+        # Find output files - Demucs creates output directly in the model folder
+        model_output_dir = os.path.join(output_dir, model)
         
-        # Find the actual output directory (demucs creates subdirectories)
+        # Check if the model directory exists
+        if not os.path.exists(model_output_dir):
+            raise Exception(f"Model output directory not found: {model_output_dir}")
+        
+        # Find the actual output directory (demucs creates subdirectories for each track)
         actual_output_dir = None
-        for item in os.listdir(separated_dir):
-            item_path = os.path.join(separated_dir, item)
+        for item in os.listdir(model_output_dir):
+            item_path = os.path.join(model_output_dir, item)
             if os.path.isdir(item_path):
                 actual_output_dir = item_path
                 break
         
         if not actual_output_dir:
-            raise Exception(f"No output directory found in {separated_dir}")
+            raise Exception(f"No track output directory found in {model_output_dir}")
         
         # Collect stem files
         stems = {}
