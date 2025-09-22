@@ -19,7 +19,7 @@ from datetime import datetime
 import runpod
 
 # Demucs imports
-import demucs.separate
+import demucs.api
 import torch
 import torchaudio
 import soundfile as sf
@@ -84,70 +84,54 @@ def run_demucs_separation(
     mp3_bitrate: int,
     float32: bool
 ) -> Dict[str, str]:
-    """Run Demucs separation"""
+    """Run Demucs separation using the API"""
     
-    # Build demucs command - correct argument order
-    cmd_args = [
-        "-n", model,  # Use -n for model name, not --model
-        "--out", output_dir,
-        "--segment", str(segment),
-        "--shifts", str(shifts),
-        "--overlap", str(overlap),
-    ]
-    
-    if two_stems:
-        cmd_args.extend(["--two-stems", two_stems])
-    
-    if float32:
-        cmd_args.append("--float32")
-    else:
-        cmd_args.extend(["--mp3", "--mp3-bitrate", str(mp3_bitrate)])
-    
-    # Add input file at the end
-    cmd_args.append(input_path)
-    
-    logger.info(f"Running demucs with args: {cmd_args}")
+    logger.info(f"Initializing Demucs separator with model: {model}")
     
     try:
-        # Run demucs
-        demucs.separate.main(cmd_args)
+        # Initialize Demucs separator
+        separator = demucs.api.Separator(
+            model=model,
+            segment=segment,
+            shifts=shifts,
+            overlap=overlap
+        )
         
-        # Find output files
-        model_output_dir = os.path.join(output_dir, model)
-        if not os.path.exists(model_output_dir):
-            raise Exception(f"Output directory not found: {model_output_dir}")
+        logger.info(f"Separating audio file: {input_path}")
         
-        # Find the actual output directory (demucs creates subdirectories)
-        actual_output_dir = None
-        for item in os.listdir(model_output_dir):
-            item_path = os.path.join(model_output_dir, item)
-            if os.path.isdir(item_path):
-                actual_output_dir = item_path
-                break
+        # Separate the audio file
+        origin, separated = separator.separate_audio_file(input_path)
         
-        if not actual_output_dir:
-            raise Exception(f"No output directory found in {model_output_dir}")
+        logger.info(f"Separation completed. Found stems: {list(separated.keys())}")
         
-        # Collect stem files
+        # Save stems to output directory
         stems = {}
-        if two_stems:
-            # Two-stem mode
-            stem_file = os.path.join(actual_output_dir, f"{two_stems}.wav")
-            if os.path.exists(stem_file):
-                stems[two_stems] = stem_file
+        os.makedirs(output_dir, exist_ok=True)
+        
+        for stem_name, stem_audio in separated.items():
+            # Determine file extension
+            if float32:
+                file_ext = ".wav"
             else:
-                stems[two_stems] = os.path.join(actual_output_dir, f"{two_stems}.mp3")
-        else:
-            # Four-stem mode
-            stem_names = ["drums", "bass", "other", "vocals"]
-            for stem in stem_names:
-                wav_file = os.path.join(actual_output_dir, f"{stem}.wav")
-                mp3_file = os.path.join(actual_output_dir, f"{stem}.mp3")
-                
-                if os.path.exists(wav_file):
-                    stems[stem] = wav_file
-                elif os.path.exists(mp3_file):
-                    stems[stem] = mp3_file
+                file_ext = ".mp3"
+            
+            # Create output path
+            output_path = os.path.join(output_dir, f"{stem_name}{file_ext}")
+            
+            # Save the audio
+            demucs.api.save_audio(
+                stem_audio, 
+                output_path, 
+                samplerate=separator.samplerate,
+                as_float=float32
+            )
+            
+            stems[stem_name] = output_path
+            logger.info(f"Saved {stem_name} to {output_path}")
+        
+        # If two_stems mode is requested, filter to only that stem
+        if two_stems and two_stems in stems:
+            stems = {two_stems: stems[two_stems]}
         
         logger.info(f"Generated stems: {list(stems.keys())}")
         return stems
