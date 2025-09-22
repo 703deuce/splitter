@@ -89,24 +89,29 @@ def run_demucs_separation(
     logger.info(f"Running Demucs separation with model: {model}")
     
     try:
-        # Build demucs command with correct arguments
-        cmd_args = [
-            "-n", model,  # Model selection
-            "--out", output_dir,
-            "--segment", str(segment),
-            "--shifts", str(shifts),
-            "--overlap", str(overlap),
-        ]
+        # Build demucs command following the exact documentation syntax
+        cmd_args = []
         
-        # Add two-stems option if specified
-        if two_stems:
-            cmd_args.extend(["--two-stems", two_stems])
-        
-        # Add output format options
+        # Add output format options first (like in the example)
         if float32:
             cmd_args.append("--float32")
         else:
             cmd_args.extend(["--mp3", "--mp3-bitrate", str(mp3_bitrate)])
+        
+        # Add two-stems option if specified (before -n model)
+        if two_stems:
+            cmd_args.extend(["--two-stems", two_stems])
+        
+        # Add model selection (-n comes after other options)
+        cmd_args.extend(["-n", model])
+        
+        # Add other options
+        cmd_args.extend([
+            "--out", output_dir,
+            "--segment", str(segment),
+            "--shifts", str(shifts),
+            "--overlap", str(overlap),
+        ])
         
         # Add input file at the end
         cmd_args.append(input_path)
